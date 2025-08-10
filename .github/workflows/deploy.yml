@@ -21,7 +21,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.11"
 
       - name: Install Railway CLI
         run: |
@@ -42,7 +42,7 @@ jobs:
         run: |
           railway run python - <<'PY'
           import os, django
-          os.environ.setdefault("DJANGO_SETTINGS_MODULE", "myproject.settings")
+          os.environ.setdefault("DJANGO_SETTINGS_MODULE", "AdvancedWebDevelopment.settings")
           django.setup()
           from django.contrib.auth import get_user_model
           User = get_user_model()

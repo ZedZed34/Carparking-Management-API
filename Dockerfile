@@ -1,28 +1,49 @@
-# Use slim Python for smaller images
-FROM python:3.12-slim
+# Use the official Python image as a base (latest stable with security patches)
+FROM python:3.11.8-slim
 
-# Prevents Python from writing .pyc files and enables unbuffered logs
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV DJANGO_SETTINGS_MODULE=AdvancedWebDevelopment.settings
 
-# System deps (psycopg2, Pillow, etc.)
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential libpq-dev curl \
- && rm -rf /var/lib/apt/lists/*
-
-# Workdir
+# Set work directory
 WORKDIR /app
 
-# Install Python deps first for better layer caching
-COPY requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
+# Install system dependencies
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        postgresql-client \
+        build-essential \
+        gcc \
+        python3-dev \
+        libpq-dev \
+        curl \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy app
-COPY . /app
+# Install Python dependencies
+COPY requirements.txt /app/
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir -r requirements.txt \
+    && pip install --no-cache-dir psycopg2-binary==2.9.9
 
-# Gunicorn will bind to $PORT (Railway sets it). Default fallback 8000.
-ENV PORT=8000
+# Copy project
+COPY . /app/
+
+# Create staticfiles directory
+RUN mkdir -p /app/staticfiles
+
+# Collect static files
+RUN python manage.py collectstatic --noinput
+
+# Create a non-root user (but run migrations as root first)
+RUN adduser --disabled-password --gecos '' appuser
+
+# Expose port
 EXPOSE 8000
 
-# Start Gunicorn (replace myproject.wsgi with your actual wsgi path)
-CMD ["gunicorn", "myproject.wsgi:application", "--bind", "0.0.0.0:${PORT}", "--workers", "3"]
+# Health check
+HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/health/ || exit 1
+
+# Run the application (migrations first as root, then switch to appuser for gunicorn)
+CMD ["sh", "-c", "python manage.py migrate && chown -R appuser:appuser /app && su appuser -c 'gunicorn --bind 0.0.0.0:${PORT:-8000} --workers 3 --worker-class sync --max-requests 1000 --max-requests-jitter 100 --timeout 30 AdvancedWebDevelopment.wsgi:application'"]

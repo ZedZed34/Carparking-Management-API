@@ -1,6 +1,5 @@
 from django.urls import path
 from django.views.generic import RedirectView
-from django.http import JsonResponse
 from .views import (
     CarParkListView,
     FilteredCarParksView,
@@ -22,13 +21,7 @@ from .views import (
     HeightRangeCarParksView,
 )
 
-# Health check endpoint
-def health(_):
-    return JsonResponse({"status": "ok"})
-
 urlpatterns = [
-    # Health check (used for Railway / Docker container readiness)
-    path("healthz/", health, name="health-check"),
 
     # Root → redirect to home page
     path("", RedirectView.as_view(pattern_name="home", permanent=False), name="root"),
