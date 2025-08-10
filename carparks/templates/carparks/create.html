@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}Add New Car Park{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm p-4">
+    <h2 class="card-title mb-4">Add a New Car Park</h2>
+    <form id="create-carpark-form" method="post" novalidate>
+        {% csrf_token %}
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label for="address" class="form-label">Address</label>
+                <input type="text" class="form-control" id="address" name="address" required>
+                <div class="invalid-feedback">Please provide an address.</div>
+            </div>
+            <div class="col-md-6">
+                <label for="type" class="form-label">Car Park Type</label>
+                <input type="text" class="form-control" id="type" name="type" required>
+                <div class="invalid-feedback">Please provide a car park type.</div>
+            </div>
+        </div>
+        <button type="submit" class="btn btn-success mt-4">Create Car Park</button>
+    </form>
+</div>
+
+<script>
+document.getElementById("create-carpark-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    if (!form.checkValidity()) {
+        form.classList.add("was-validated");
+        return;
+    }
+    const formData = new FormData(form);
+    const carParkData = Object.fromEntries(formData.entries());
+    // map to API fields
+    const payload = {
+      address: carParkData.address,
+      car_park_type: carParkData.type,
+    };
+    const response = await fetch("/api/v1/carparks/create/", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify(payload)
+    });
+    if (response.ok) {
+        alert("Car park added successfully!");
+    } else {
+        const err = await response.json().catch(() => ({}));
+        alert("Failed to add car park. " + (err.detail || JSON.stringify(err)));
+    }
+})
+</script>
+{% endblock %}

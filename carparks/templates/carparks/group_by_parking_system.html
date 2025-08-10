@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}Group by Parking System{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm p-4">
+  <h2 class="card-title mb-4">Group Car Parks by Parking System</h2>
+  <button class="btn btn-primary" id="group-parking-system">Group Parking Systems</button>
+  <div id="grouped-parking-system" class="mt-4"></div>
+</div>
+
+<script>
+document.getElementById('group-parking-system').addEventListener('click', async () => {
+    const response = await fetch('/api/v1/carparks/group-by-system/');
+    const data = await response.json();
+    const groupedDiv = document.getElementById('grouped-parking-system');
+    if (response.ok) {
+        groupedDiv.innerHTML = `
+            <div class="list-group">
+                ${data.map(group => `
+                    <a href="#" class="list-group-item list-group-item-action">
+                        Parking System: ${group.type_of_parking_system}, Count: ${group.total}
+                    </a>
+                `).join('')}
+            </div>
+        `;
+    } else {
+        groupedDiv.innerHTML = `<div class="alert alert-danger">Failed to group car parks by parking system.</div>`
+    }
+})
+</script>
+{% endblock %}

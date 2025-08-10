@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}Average Gantry Height{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm p-4">
+  <h2 class="card-title mb-4">Average Gantry Height</h2>
+  <button class="btn btn-primary" id="fetch-average-gantry-height">Fetch Average Height</button>
+  <div id="average-gantry-height-result" class="mt-4"></div>
+</div>
+
+<script>
+document.getElementById('fetch-average-gantry-height').addEventListener('click', async () => {
+    const response = await fetch('/api/v1/carparks/average-gantry-height/');
+    const data = await response.json();
+    const avgDiv = document.getElementById('average-gantry-height-result');
+    if (response.ok) {
+        avgDiv.innerHTML = `
+            <div class="alert alert-info">
+                The average gantry height is <strong>${Number(data.average_height).toFixed(2)}</strong> meters.
+            </div>
+        `;
+    } else {
+        avgDiv.innerHTML = `<div class="alert alert-danger">Failed to fetch average gantry height.</div>`
+    }
+})
+</script>
+{% endblock %}

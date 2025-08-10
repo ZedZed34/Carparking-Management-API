@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}Filter Free Parking{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm p-4">
+  <h2 class="card-title mb-4">Filter Car Parks with Free Parking</h2>
+  <button class="btn btn-primary" id="fetch-free-parking">Show Free Parking</button>
+  <div id="free-parking-list" class="mt-4"></div>
+</div>
+
+<script>
+document.getElementById('fetch-free-parking').addEventListener('click', async () => {
+    const response = await fetch('/api/v1/carparks/free-parking/');
+    const data = await response.json();
+    const listDiv = document.getElementById('free-parking-list');
+    if (response.ok) {
+        listDiv.innerHTML = `
+            <div class="list-group">
+                ${data.map(carpark => `
+                    <a href="#" class="list-group-item list-group-item-action">
+                        <strong>${carpark.car_park_type}</strong> at ${carpark.address}, Free Parking: ${carpark.free_parking}
+                    </a>
+                `).join('')}
+            </div>
+        `;
+    } else {
+        listDiv.innerHTML = `<div class="alert alert-danger">Failed to fetch car parks with free parking.</div>`
+    }
+})
+</script>
+{% endblock %}

@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block title %}Home{% endblock %}
+
+{% block content %}
+<div class="jumbotron text-center p-5 bg-light shadow-sm">
+  <h1 class="display-4">Welcome to the Car Park Management System</h1>
+  <p class="lead">Manage and explore car parks with ease and hassle-free.</p>
+  <hr class="my-4" />
+  <p>Select an option below to get started:</p>
+  <div class="d-flex justify-content-center mt-4">
+    <a href="/list/" class="btn btn-primary btn-lg mx-2">View All Car Parks</a>
+    <a href="/carparks/create/" class="btn btn-success btn-lg mx-2">Add New Car Park</a>
+  </div>
+</div>
+{% endblock %}

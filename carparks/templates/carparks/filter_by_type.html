@@ -1,0 +1,70 @@
+<!-- Adjusted Template for Filter By Type -->
+{% extends "base.html" %}
+
+{% block title %}Filter Car Parks by Type{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm p-4">
+  <h2 class="card-title mb-4">Filter Car Parks by Type</h2>
+  <form id="filter-form" novalidate>
+    <div class="mb-3">
+      <label for="type" class="form-label">Car Park Type</label>
+      <select class="form-select" id="type" name="type" required>
+        <option value="" selected disabled>Select a type...</option>
+      </select>
+      <div class="invalid-feedback">Please select a car park type.</div>
+    </div>
+    <button type="submit" class="btn btn-primary">Filter</button>
+  </form>
+  <div id="filtered-carparks" class="mt-4"></div>
+</div>
+
+<script>
+window.addEventListener('DOMContentLoaded', () => {
+  const form = document.getElementById('filter-form');
+  const select = document.getElementById('type');
+  const resultDiv = document.getElementById('filtered-carparks');
+
+  if (form && select) {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!form.checkValidity()) {
+        form.classList.add('was-validated');
+        return;
+      }
+      const type = select.value;
+      const response = await fetch(`/api/v1/carparks/filter/?type=${encodeURIComponent(type)}`);
+      const data = await response.json();
+      if (response.ok) {
+        resultDiv.innerHTML = `
+          <div class="list-group">
+            ${data.map(carpark => `
+              <a href="#" class="list-group-item list-group-item-action">
+                <strong>${carpark.car_park_type}</strong> at ${carpark.address}
+              </a>
+            `).join('')}
+          </div>
+        `;
+      } else {
+        resultDiv.innerHTML = `<div class="alert alert-danger">${data.error || 'No car parks found.'}</div>`
+      }
+    });
+
+    // populate types
+    (async () => {
+      try {
+        const resp = await fetch('/api/v1/carparks/types/');
+        if (!resp.ok) return;
+        const types = await resp.json();
+        types.forEach(t => {
+          const opt = document.createElement('option');
+          opt.value = t;
+          opt.textContent = t;
+          select.appendChild(opt);
+        });
+      } catch {}
+    })();
+  }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}Search Car Parks by Address{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm p-4">
+  <h2 class="card-title mb-4">Search Car Parks by Address</h2>
+  <form id="search-form" novalidate>
+    <div class="mb-3">
+      <label for="address" class="form-label">Address</label>
+      <input type="text" class="form-control" id="address" name="address" placeholder="Enter address" required />
+      <div class="invalid-feedback">Please enter an address to search.</div>
+    </div>
+    <button type="submit" class="btn btn-primary">Search</button>
+  </form>
+  <div id="search-results" class="mt-4"></div>
+</div>
+
+<script>
+document.getElementById('search-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    if (!form.checkValidity()) {
+        form.classList.add('was-validated');
+        return;
+    }
+    const address = document.getElementById('address').value;
+    const response = await fetch(`/api/v1/carparks/search/?address=${encodeURIComponent(address)}`);
+    const data = await response.json();
+    const resultsDiv = document.getElementById('search-results');
+    if (response.ok) {
+        resultsDiv.innerHTML = `
+            <div class="list-group">
+                ${data.map(carpark => `
+                    <a href="#" class="list-group-item list-group-item-action">
+                        ${carpark.address} - <strong>${carpark.car_park_type}</strong>
+                    </a>
+                `).join('')}
+            </div>
+        `;
+    } else {
+        resultsDiv.innerHTML = `<div class="alert alert-danger">${data.error || 'No car parks found for the given address.'}</div>`
+    }
+})
+</script>
+{% endblock %}
