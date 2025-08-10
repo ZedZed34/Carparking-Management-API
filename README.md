@@ -75,7 +75,6 @@ Open a web browser and go to `http://127.0.0.1:8000/` to access the application.
 
 ---
 
-
 ## **Testing**
 
 To run the tests, execute the following command:
