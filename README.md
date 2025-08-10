@@ -40,8 +40,8 @@ python -m django --version
 ### **2. Create a Virtual Environment**
 
 ```bash
-python -m venv HLA-Midterm
-HLA-Midterm\scripts\activate
+python -m venv HLA
+HLA\scripts\activate
 ```
 
 ### **3. Install Required Packages**
@@ -75,13 +75,6 @@ Open a web browser and go to `http://127.0.0.1:8000/` to access the application.
 
 ---
 
-### **Login Credentials**
-
-username: zedzed
-
-email: htetlinaung@gmail.com
-
-password: Htetlinaung@123
 
 ## **Testing**
 
