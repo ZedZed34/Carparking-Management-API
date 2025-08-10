@@ -1,60 +1,15 @@
-# Git
-.git
-.gitignore
-
-# Python
-__pycache__
+__pycache__/
 *.pyc
 *.pyo
 *.pyd
-.Python
-.pytest_cache
-.coverage
-.venv
-venv/
-env/
-HLA/
-
-# IDE
-.vscode
-.idea
-*.swp
-*.swo
-
-# Node.js (if any)
-node_modules
-npm-debug.log
-
-# Docker
-Dockerfile
-docker-compose*.yml
-.dockerignore
-
-# Documentation
-README.md
-*.md
-
-# Database
 *.sqlite3
-db.sqlite3
-
-# Logs
-*.log
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Local environment
 .env
-.env.local
-
-# Build artifacts
-dist/
-build/
-
-# Media files (optional, depending on your needs)
+.env.*
+.git
+.gitignore
+.vscode
+.mypy_cache/
+.pytest_cache/
+node_modules/
 media/
-
-# Static files will be collected during build
 staticfiles/

@@ -1,165 +1,58 @@
-name: CI/CD Pipeline for Carpark Management API
+name: Deploy to Railway (Docker + Django)
 
 on:
   push:
-    branches: [ main, develop ]
-  pull_request:
-    branches: [ main ]
-
-env:
-  PYTHON_VERSION: '3.11'
-  DJANGO_SETTINGS_MODULE: AdvancedWebDevelopment.settings
+    branches: [ "main" ]
+  workflow_dispatch:
 
 jobs:
-  test:
+  deploy:
     runs-on: ubuntu-latest
-    
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: test_db
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
+    env:
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      DJANGO_SUPERUSER_USERNAME: ${{ secrets.DJANGO_SUPERUSER_USERNAME }}
+      DJANGO_SUPERUSER_EMAIL: ${{ secrets.DJANGO_SUPERUSER_EMAIL }}
+      DJANGO_SUPERUSER_PASSWORD: ${{ secrets.DJANGO_SUPERUSER_PASSWORD }}
 
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ env.PYTHON_VERSION }}
-        
-    - name: Cache pip dependencies
-      uses: actions/cache@v3
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
-    
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        
-    - name: Set up environment variables
-      run: |
-        echo "SECRET_KEY=test-secret-key-${{ github.sha }}" >> $GITHUB_ENV
-        echo "DEBUG=True" >> $GITHUB_ENV
-        echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/test_db" >> $GITHUB_ENV
-        echo "ALLOWED_HOSTS=localhost,127.0.0.1,testserver" >> $GITHUB_ENV
-        
-    - name: Run migrations
-      run: |
-        python manage.py migrate
-        
-    - name: Load test data
-      run: |
-        python scripts/load_and_store.py
-      continue-on-error: true
-        
-    - name: Run tests
-      run: |
-        python manage.py test
-        
-    - name: Check code style with flake8
-      run: |
-        pip install flake8
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-      continue-on-error: true
+      - name: Checkout
+        uses: actions/checkout@v4
 
-  build-and-push:
-    needs: test
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-      
-    - name: Log in to Docker Hub
-      uses: docker/login-action@v3
-      with:
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
-        
-    - name: Extract metadata
-      id: meta
-      uses: docker/metadata-action@v5
-      with:
-        images: ${{ secrets.DOCKER_USERNAME }}/carpark-management-api
-        tags: |
-          type=ref,event=branch
-          type=ref,event=pr
-          type=sha,prefix={{branch}}-
-          type=raw,value=latest,enable={{is_default_branch}}
-          
-    - name: Build and push Docker image
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        platforms: linux/amd64,linux/arm64
-        push: true
-        tags: ${{ steps.meta.outputs.tags }}
-        labels: ${{ steps.meta.outputs.labels }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
 
-  deploy-to-railway:
-    needs: [test, build-and-push]
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Install Railway CLI
-      run: |
-        curl -fsSL https://railway.app/install.sh | sh
-        echo "$HOME/.railway/bin" >> $GITHUB_PATH
-        
-    - name: Deploy to Railway
-      env:
-        RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-      run: |
-        railway login --token $RAILWAY_TOKEN
-        railway up --detach
-        
-    - name: Wait for deployment
-      run: |
-        echo "Waiting for deployment to complete..."
-        sleep 30
-        
-    - name: Run post-deployment tasks
-      env:
-        RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-      run: |
-        railway login --token $RAILWAY_TOKEN
-        railway run python manage.py migrate --run-syncdb
-        railway run python scripts/load_and_store.py
-      continue-on-error: true
+      - name: Install Railway CLI
+        run: |
+          curl -fsSL https://railway.app/install.sh | sh
+          echo "$HOME/.railway/bin" >> $GITHUB_PATH
 
-  notification:
-    needs: [deploy-to-railway]
-    runs-on: ubuntu-latest
-    if: always()
-    
-    steps:
-    - name: Notify deployment status
-      run: |
-        if [ "${{ needs.deploy-to-railway.result }}" == "success" ]; then
-          echo "✅ Deployment to Railway successful!"
-        else
-          echo "❌ Deployment to Railway failed!"
-          exit 1
-        fi
+      - name: Deploy to Railway
+        run: railway up --detach
+
+      - name: Run migrations
+        run: railway run python manage.py migrate --noinput
+
+      - name: Collect static
+        run: railway run python manage.py collectstatic --noinput
+
+      - name: Create superuser (optional)
+        if: ${{ env.DJANGO_SUPERUSER_USERNAME != '' }}
+        run: |
+          railway run python - <<'PY'
+          import os, django
+          os.environ.setdefault("DJANGO_SETTINGS_MODULE", "myproject.settings")
+          django.setup()
+          from django.contrib.auth import get_user_model
+          User = get_user_model()
+          if not User.objects.filter(username=os.environ["DJANGO_SUPERUSER_USERNAME"]).exists():
+              User.objects.create_superuser(
+                  username=os.environ["DJANGO_SUPERUSER_USERNAME"],
+                  email=os.environ["DJANGO_SUPERUSER_EMAIL"],
+                  password=os.environ["DJANGO_SUPERUSER_PASSWORD"]
+              )
+              print("Superuser created")
+          else:
+              print("Superuser exists")
+          PY
