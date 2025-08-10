@@ -8,6 +8,8 @@ from .serializers import CarParkSerializer
 from django.http import HttpResponse
 from uuid import uuid4
 from django.shortcuts import get_object_or_404
+from django.db import IntegrityError
+from django.db.models import Q
 
 # Feature 1: View All Car Parks
 class CarParkListView(APIView):
@@ -29,8 +31,8 @@ class FilteredCarParksView(APIView):
 # Feature 3: Filter Free Parking
 class FreeParkingView(APIView):
     def get(self, request):
-        # In CSV, free_parking is textual. Treat anything other than explicit 'NO' as free option available
-        car_parks = CarPark.objects.exclude(free_parking__iexact="NO")
+        # Treat explicit 'NO' or 'FALSE' as not free; everything else is free
+        car_parks = CarPark.objects.exclude(free_parking__iexact="NO").exclude(free_parking__iexact="FALSE")
         serializer = CarParkSerializer(car_parks, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -55,18 +57,64 @@ class CarParkCreateView(APIView):
         payload.setdefault("x_coord", 0)
         payload.setdefault("y_coord", 0)
         payload.setdefault("type_of_parking_system", "ELECTRONIC PARKING")
-        payload.setdefault("short_term_parking", "NO")
-        payload.setdefault("free_parking", "NO")
+        # Normalize booleans for CharFields
+        def to_text(val):
+            if isinstance(val, bool):
+                return "TRUE" if val else "FALSE"
+            return val
+
+        payload["short_term_parking"] = to_text(payload.get("short_term_parking", "NO"))
+        payload["free_parking"] = to_text(payload.get("free_parking", "NO"))
         payload.setdefault("night_parking", False)
         payload.setdefault("car_park_decks", 0)
         payload.setdefault("gantry_height", 0)
         payload.setdefault("car_park_basement", False)
 
+        # Check duplicates first using raw payload (with safe type casting)
+        try:
+            dup_gantry = float(payload.get("gantry_height")) if payload.get("gantry_height") is not None else None
+        except (TypeError, ValueError):
+            dup_gantry = None
+        if (
+            payload.get("car_park_no")
+            and payload.get("address")
+            and payload.get("car_park_type")
+            and payload.get("type_of_parking_system")
+            and dup_gantry is not None
+        ):
+            if CarPark.objects.filter(
+                car_park_no=payload.get("car_park_no"),
+                address=payload.get("address"),
+                car_park_type=payload.get("car_park_type"),
+                type_of_parking_system=payload.get("type_of_parking_system"),
+                gantry_height=dup_gantry,
+            ).exists():
+                return Response({"detail": "Duplicate car park"}, status=status.HTTP_409_CONFLICT)
+
+        # Validate then save
         serializer = CarParkSerializer(data=payload)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            instance = serializer.save()
+        except IntegrityError:
+            return Response({"detail": "Duplicate car park"}, status=status.HTTP_409_CONFLICT)
+        return Response(CarParkSerializer(instance).data, status=status.HTTP_201_CREATED)
+
+# New: filter by gantry height range
+class HeightRangeCarParksView(APIView):
+    def get(self, request):
+        min_h = request.query_params.get("min_height")
+        max_h = request.query_params.get("max_height")
+        try:
+            if min_h is None or max_h is None:
+                return Response({"error": "min_height and max_height are required"}, status=status.HTTP_400_BAD_REQUEST)
+            min_v = float(min_h)
+            max_v = float(max_h)
+        except ValueError:
+            return Response({"error": "Invalid height values"}, status=status.HTTP_400_BAD_REQUEST)
+        car_parks = CarPark.objects.filter(gantry_height__gte=min_v, gantry_height__lte=max_v)
+        return Response(CarParkSerializer(car_parks, many=True).data, status=status.HTTP_200_OK)
 
 # Feature 7: Search Car Parks by Address
 class SearchCarParksByAddressView(APIView):

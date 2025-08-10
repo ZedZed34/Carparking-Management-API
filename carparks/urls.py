@@ -20,6 +20,7 @@ from .views import (
     CarParkTypesView,
     carparks_list_view,
     CarParkDetailView,
+    HeightRangeCarParksView,
 )
 
 urlpatterns = [
@@ -63,6 +64,7 @@ urlpatterns = [
     path("api/v1/carparks/", CarParkListView.as_view(), name="carpark-list"),
     path("api/v1/carparks/types/", CarParkTypesView.as_view(), name="carpark-types"),
     path("api/v1/carparks/<int:pk>/", CarParkDetailView.as_view(), name="carpark-detail"),
+    path("api/v1/carparks/height-range/", HeightRangeCarParksView.as_view(), name="height-range"),
 
     # Feature 2: Filter by Car Park Type
     path("api/v1/carparks/filter/", FilteredCarParksView.as_view(), name="filtered-carparks"),
