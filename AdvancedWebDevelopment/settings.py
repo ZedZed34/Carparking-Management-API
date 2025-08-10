@@ -89,21 +89,32 @@ WSGI_APPLICATION = "AdvancedWebDevelopment.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql" if os.environ.get("DATABASE_URL") else "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3" if not os.environ.get("DATABASE_URL") else "",
-        "URL": os.environ.get("DATABASE_URL", ""),
-    }
-}
+# Database configuration
+database_url = os.environ.get("DATABASE_URL")
 
-# Parse database URL for production
-if os.environ.get("DATABASE_URL"):
+if database_url and database_url.strip():
+    # Production: Use PostgreSQL from DATABASE_URL
     try:
         import dj_database_url
-        DATABASES["default"] = dj_database_url.parse(os.environ.get("DATABASE_URL"))
+        DATABASES = {
+            "default": dj_database_url.parse(database_url)
+        }
     except ImportError:
-        print("Warning: dj_database_url not available. Using default database configuration.")
+        print("Warning: dj_database_url not available. Using SQLite fallback.")
+        DATABASES = {
+            "default": {
+                "ENGINE": "django.db.backends.sqlite3",
+                "NAME": BASE_DIR / "db.sqlite3",
+            }
+        }
+else:
+    # Development: Use SQLite
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 
 
 # Password validation
