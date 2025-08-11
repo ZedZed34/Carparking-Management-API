@@ -8,34 +8,58 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    
+
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Install Railway CLI
-        run: |
-          curl -fsSL https://railway.app/install.sh | sh
-          echo "$HOME/.railway/bin" >> $GITHUB_PATH
+        run: npm i -g @railway/cli
 
-      - name: Authenticate & Link Railway
-        shell: bash
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      - name: Verify Railway auth
         run: |
-          railway link --project ${{ secrets.RAILWAY_PROJECT_ID }}
+          railway whoami
           railway status || true
-
-      - name: Deploy to Railway
-        shell: bash
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-          RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
-        run: |
-          railway up --ci --service ${{ secrets.RAILWAY_SERVICE_ID }} --detach | cat
 
-      - name: Smoke test deployment
+      - name: Deploy (Dockerfile) to Railway
         run: |
-          echo "Running smoke test..."
-          curl -f https://${{ secrets.RAILWAY_PUBLIC_URL }}/healthz/ || exit 1
-          echo "✅ Health check passed!"
+          railway up --ci --detach \
+            --project ${{ secrets.RAILWAY_PROJECT_ID }} \
+            --service ${{ secrets.RAILWAY_SERVICE_ID }}
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+      - name: Run migrations
+        run: |
+          railway run --project ${{ secrets.RAILWAY_PROJECT_ID }} --service ${{ secrets.RAILWAY_SERVICE_ID }} \
+            python manage.py migrate --noinput
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+      - name: Collect static
+        run: |
+          railway run --project ${{ secrets.RAILWAY_PROJECT_ID }} --service ${{ secrets.RAILWAY_SERVICE_ID }} \
+            python manage.py collectstatic --noinput
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+      - name: Smoke test /healthz (inside container)
+        run: |
+          railway run --project ${{ secrets.RAILWAY_PROJECT_ID }} --service ${{ secrets.RAILWAY_SERVICE_ID }} \
+            python - <<'PY'
+import os, urllib.request, time
+url = f"http://127.0.0.1:{os.getenv('PORT','8000')}/healthz/"
+for _ in range(10):
+    try:
+        with urllib.request.urlopen(url, timeout=3) as r:
+            assert r.status == 200
+            print("healthz OK"); break
+    except Exception as e:
+        print("waiting for app:", e); time.sleep(2)
+else:
+    raise SystemExit("healthz failed")
+PY
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
