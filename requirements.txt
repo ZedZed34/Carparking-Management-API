@@ -25,18 +25,22 @@ urllib3==2.5.0
 idna==3.10
 six==1.17.0
 
-# Environment Configuration
+# Environment Configuration & Security
 python-dotenv==1.0.1
+django-secure==1.0.2
+django-csp==3.8
 
-# Production Server & Static Files (optional for development)
+# Production Server & Static Files
 gunicorn==21.2.0
 whitenoise==6.6.0
 dj-database-url==2.1.0
+django-cors-headers==4.3.1
+django-filter==24.2
+django-health-check==3.18.1
 
 # Database Adapters
-# PostgreSQL (optional - only needed for production or if using PostgreSQL locally)
-# Uncomment the next line if you need PostgreSQL support:
-# psycopg2-binary==2.9.9
+# PostgreSQL (required for Railway production deployment)
+psycopg2-binary==2.9.9
 
 # Development Tools (optional - uncomment if needed)
 # black==24.10.0
