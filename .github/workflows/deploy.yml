@@ -9,11 +9,12 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
 
-    # Make the token and IDs available to ALL steps
     env:
+      # provide these as GitHub repo secrets
       RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
       RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
       RAILWAY_SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
+      RAILWAY_ENVIRONMENT: production   # or your env name
 
     steps:
       - name: Checkout
@@ -22,21 +23,24 @@ jobs:
       - name: Install Railway CLI
         run: npm i -g @railway/cli
 
-      # Drop the 'whoami' step (it fails fast if token is stale). We’ll let 'up' tell us.
+      # set non-interactive context for all subsequent commands
+      - name: Set Railway context (project & environment)
+        run: |
+          railway use --project "$RAILWAY_PROJECT_ID" --environment "$RAILWAY_ENVIRONMENT"
+          railway status || true
+
       - name: Deploy (Dockerfile) to Railway
         run: |
-          railway up --ci --detach \
-            --project "$RAILWAY_PROJECT_ID" \
-            --service "$RAILWAY_SERVICE_ID"
+          railway up --ci --detach --service "$RAILWAY_SERVICE_ID"
 
       - name: Run migrations
         run: |
-          railway run --project "$RAILWAY_PROJECT_ID" --service "$RAILWAY_SERVICE_ID" \
+          railway run --service "$RAILWAY_SERVICE_ID" \
             python manage.py migrate --noinput
 
       - name: Collect static
         run: |
-          railway run --project "$RAILWAY_PROJECT_ID" --service "$RAILWAY_SERVICE_ID" \
+          railway run --service "$RAILWAY_SERVICE_ID" \
             python manage.py collectstatic --noinput
 
       - name: Smoke test /healthz (retry)
@@ -44,10 +48,9 @@ jobs:
           set -e
           for i in $(seq 1 10); do
             echo "Try #$i: hitting internal healthz..."
-            if railway run --project "$RAILWAY_PROJECT_ID" --service "$RAILWAY_SERVICE_ID" \
+            if railway run --service "$RAILWAY_SERVICE_ID" \
                  bash -lc 'curl -fsS http://127.0.0.1:${PORT:-8000}/healthz/'; then
-              echo "healthz OK"
-              exit 0
+              echo "healthz OK"; exit 0
             fi
             sleep 3
           done
