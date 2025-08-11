@@ -2,17 +2,12 @@ name: Deploy to Railway (Docker + Django)
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main" ]   # change if your prod branch is different
   workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    env:
-      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-      DJANGO_SUPERUSER_USERNAME: ${{ secrets.DJANGO_SUPERUSER_USERNAME }}
-      DJANGO_SUPERUSER_EMAIL: ${{ secrets.DJANGO_SUPERUSER_EMAIL }}
-      DJANGO_SUPERUSER_PASSWORD: ${{ secrets.DJANGO_SUPERUSER_PASSWORD }}
 
     steps:
       - name: Checkout
@@ -28,7 +23,67 @@ jobs:
           curl -fsSL https://railway.app/install.sh | sh
           echo "$HOME/.railway/bin" >> $GITHUB_PATH
 
+      - name: Verify Railway auth & context
+        run: |
+          railway whoami
+          railway status || true
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+      # Build & deploy using your repo's Dockerfile
       - name: Deploy to Railway
         run: |
           railway up --detach
-          echo "Deployment triggered. Railway will handle migrations automatically via Dockerfile."
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+      # Apply DB migrations on the deployed service
+      - name: Run migrations
+        run: railway run python manage.py migrate --noinput
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+      # Collect static files (WhiteNoise will serve them)
+      - name: Collect static
+        run: railway run python manage.py collectstatic --noinput
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+      # Optional: create admin user if secrets provided
+      - name: Create superuser (optional)
+        if: ${{ secrets.DJANGO_SUPERUSER_USERNAME != '' && secrets.DJANGO_SUPERUSER_PASSWORD != '' }}
+        run: |
+          railway run python manage.py shell -c "
+from django.contrib.auth import get_user_model
+U = get_user_model()
+u = '${{ secrets.DJANGO_SUPERUSER_USERNAME }}'
+e = '${{ secrets.DJANGO_SUPERUSER_EMAIL }}'
+p = '${{ secrets.DJANGO_SUPERUSER_PASSWORD }}'
+print('Ensuring superuser:', u)
+if not U.objects.filter(username=u).exists():
+    U.objects.create_superuser(username=u, email=e, password=p)
+    print('Superuser created')
+else:
+    print('Superuser already exists')
+"
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+      # Optional: quick smoke test against the container itself
+      - name: Smoke test /healthz
+        run: |
+          # Hit the app from inside the service (127.0.0.1:$PORT)
+          railway run python - <<'PY'
+import os, urllib.request
+port = os.getenv("PORT", "8000")
+url = f"http://127.0.0.1:{port}/healthz/"
+print("Pinging:", url)
+try:
+    with urllib.request.urlopen(url, timeout=5) as r:
+        print("Status:", r.status)
+        print("Body:", r.read())
+except Exception as e:
+    raise SystemExit(f"Health check failed: {e}")
+PY
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
