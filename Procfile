@@ -1,2 +1,1 @@
-web: python manage.py migrate && python manage.py collectstatic --noinput && gunicorn --bind 0.0.0.0:$PORT AdvancedWebDevelopment.wsgi:application
-release: python scripts/create_superuser.py && python scripts/load_and_store.py
+web: gunicorn --bind 0.0.0.0:$PORT AdvancedWebDevelopment.wsgi:application

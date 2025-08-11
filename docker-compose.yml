@@ -21,7 +21,7 @@ services:
       sh -c "python manage.py migrate &&
              python manage.py collectstatic --noinput &&
              python scripts/load_and_store.py &&
-             gunicorn --bind 0.0.0.0:8000 --reload AdvancedWebDevelopment.wsgi:application"
+             gunicorn --bind 0.0.0.0:8000 AdvancedWebDevelopment.wsgi:application"
 
   db:
     image: postgres:15
