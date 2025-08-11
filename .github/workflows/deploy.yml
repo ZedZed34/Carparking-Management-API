@@ -29,30 +29,6 @@ jobs:
           echo "$HOME/.railway/bin" >> $GITHUB_PATH
 
       - name: Deploy to Railway
-        run: railway up --detach
-
-      - name: Run migrations
-        run: railway run python manage.py migrate --noinput
-
-      - name: Collect static
-        run: railway run python manage.py collectstatic --noinput
-
-      - name: Create superuser (optional)
-        if: ${{ env.DJANGO_SUPERUSER_USERNAME != '' }}
         run: |
-          railway run python - <<'PY'
-          import os, django
-          os.environ.setdefault("DJANGO_SETTINGS_MODULE", "AdvancedWebDevelopment.settings")
-          django.setup()
-          from django.contrib.auth import get_user_model
-          User = get_user_model()
-          if not User.objects.filter(username=os.environ["DJANGO_SUPERUSER_USERNAME"]).exists():
-              User.objects.create_superuser(
-                  username=os.environ["DJANGO_SUPERUSER_USERNAME"],
-                  email=os.environ["DJANGO_SUPERUSER_EMAIL"],
-                  password=os.environ["DJANGO_SUPERUSER_PASSWORD"]
-              )
-              print("Superuser created")
-          else:
-              print("Superuser exists")
-          PY
+          railway up --detach
+          echo "Deployment triggered. Railway will handle migrations automatically via Dockerfile."
