@@ -6,10 +6,11 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DEBUG=True
-      - SECRET_KEY=dev-secret-key-change-in-production
+      - DJANGO_DEBUG=True
+      - DJANGO_SECRET_KEY=dev-secret-key-change-in-production
       - ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0
       - DATABASE_URL=postgresql://carpark_user:carpark_password@db:5432/carpark_db
+      - DB_SSL_REQUIRED=False
     depends_on:
       - db
     volumes:

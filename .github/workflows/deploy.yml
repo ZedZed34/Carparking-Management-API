@@ -2,7 +2,7 @@ name: Deploy to Railway (Docker + Django)
 
 on:
   push:
-    branches: [ "main" ]   # change if your prod branch is different
+    branches: [ "main" ]
   workflow_dispatch:
 
 jobs:
@@ -16,7 +16,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.13"
 
       - name: Install Railway CLI
         run: |
@@ -30,8 +30,7 @@ jobs:
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
-      # Build & deploy using your repo's Dockerfile
-      - name: Deploy to Railway
+      - name: Deploy to Railway (Dockerfile)
         run: |
           railway up --detach \
             --project ${{ secrets.RAILWAY_PROJECT_ID }} \
@@ -39,28 +38,39 @@ jobs:
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
-      # Apply DB migrations on the deployed service
       - name: Run migrations
         run: railway run python manage.py migrate --noinput
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
-      # Collect static files (WhiteNoise will serve them)
       - name: Collect static
         run: railway run python manage.py collectstatic --noinput
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
-      # Optional: create admin user if secrets provided
+      - name: Smoke test /healthz
+        run: |
+          railway run python - <<'PY'
+import os, urllib.request
+port = os.getenv("PORT", "8000")
+url = f"http://127.0.0.1:{port}/healthz/"
+with urllib.request.urlopen(url, timeout=5) as r:
+    assert r.status == 200, "healthz not OK"
+print("healthz OK")
+PY
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+      # Optional: auto-create a superuser if secrets are set
       - name: Create superuser (optional)
         if: ${{ secrets.DJANGO_SUPERUSER_USERNAME != '' && secrets.DJANGO_SUPERUSER_PASSWORD != '' }}
         run: |
           railway run python manage.py shell -c "
 from django.contrib.auth import get_user_model
 U = get_user_model()
-u = '${{ secrets.DJANGO_SUPERUSER_USERNAME }}'
-e = '${{ secrets.DJANGO_SUPERUSER_EMAIL }}'
-p = '${{ secrets.DJANGO_SUPERUSER_PASSWORD }}'
+u='${{ secrets.DJANGO_SUPERUSER_USERNAME }}'
+e='${{ secrets.DJANGO_SUPERUSER_EMAIL }}'
+p='${{ secrets.DJANGO_SUPERUSER_PASSWORD }}'
 print('Ensuring superuser:', u)
 if not U.objects.filter(username=u).exists():
     U.objects.create_superuser(username=u, email=e, password=p)
@@ -68,24 +78,5 @@ if not U.objects.filter(username=u).exists():
 else:
     print('Superuser already exists')
 "
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-
-      # Optional: quick smoke test against the container itself
-      - name: Smoke test /healthz
-        run: |
-          # Hit the app from inside the service (127.0.0.1:$PORT)
-          railway run python - <<'PY'
-import os, urllib.request
-port = os.getenv("PORT", "8000")
-url = f"http://127.0.0.1:{port}/healthz/"
-print("Pinging:", url)
-try:
-    with urllib.request.urlopen(url, timeout=5) as r:
-        print("Status:", r.status)
-        print("Body:", r.read())
-except Exception as e:
-    raise SystemExit(f"Health check failed: {e}")
-PY
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
