@@ -1,6 +1,4 @@
-from django.contrib import admin
 from django.urls import path, include
-from django.http import JsonResponse
 from django.views.generic import RedirectView
 
 from carparks.views import (
@@ -26,16 +24,9 @@ from carparks.views import (
     carparks_list_view,
 )
 
-# Health check endpoint
-def healthz(request):
-    return JsonResponse({"status": "ok"})
 
 urlpatterns = [
-    # Django admin
-    path("admin/", admin.site.urls),
-
-    # Health check endpoint
-    path("healthz/", healthz, name="healthz"),
+    # Note: admin and health endpoints are defined in project urls
 
     # Root → redirect to home page
     path("", RedirectView.as_view(pattern_name="home", permanent=False), name="root"),
