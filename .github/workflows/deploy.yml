@@ -10,11 +10,11 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      # provide these as GitHub repo secrets
-      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-      RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
-      RAILWAY_SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
-      RAILWAY_ENVIRONMENT: production   # or your env name
+      # GitHub repository secrets (make sure these exist)
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}            # account token
+      RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}  # project id
+      RAILWAY_SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID }}  # "web" service id
+      RAILWAY_ENVIRONMENT: production
 
     steps:
       - name: Checkout
@@ -23,24 +23,23 @@ jobs:
       - name: Install Railway CLI
         run: npm i -g @railway/cli
 
-      # set non-interactive context for all subsequent commands
-      - name: Set Railway context (project & environment)
-        run: |
-          railway use --project "$RAILWAY_PROJECT_ID" --environment "$RAILWAY_ENVIRONMENT"
-          railway status || true
-
+      # No 'use', no '--project'. The project is taken from env.
       - name: Deploy (Dockerfile) to Railway
         run: |
-          railway up --ci --detach --service "$RAILWAY_SERVICE_ID"
+          railway up --ci --detach \
+            --service "$RAILWAY_SERVICE_ID" \
+            --environment "$RAILWAY_ENVIRONMENT"
 
       - name: Run migrations
         run: |
           railway run --service "$RAILWAY_SERVICE_ID" \
+            --environment "$RAILWAY_ENVIRONMENT" \
             python manage.py migrate --noinput
 
       - name: Collect static
         run: |
           railway run --service "$RAILWAY_SERVICE_ID" \
+            --environment "$RAILWAY_ENVIRONMENT" \
             python manage.py collectstatic --noinput
 
       - name: Smoke test /healthz (retry)
@@ -49,6 +48,7 @@ jobs:
           for i in $(seq 1 10); do
             echo "Try #$i: hitting internal healthz..."
             if railway run --service "$RAILWAY_SERVICE_ID" \
+                 --environment "$RAILWAY_ENVIRONMENT" \
                  bash -lc 'curl -fsS http://127.0.0.1:${PORT:-8000}/healthz/'; then
               echo "healthz OK"; exit 0
             fi
