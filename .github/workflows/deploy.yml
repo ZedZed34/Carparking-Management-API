@@ -27,14 +27,15 @@ jobs:
           railway status || true
 
       - name: Deploy to Railway
-  shell: bash
-  env:
-    RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-    RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
-  run: |
-    railway up --ci --detach --service ${{ secrets.RAILWAY_SERVICE_ID }} | cat
-
-      - name: Check deployment status
+        shell: bash
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
         run: |
-          echo "✅ Deployment initiated successfully!"
-          echo "Check your Railway dashboard: https://railway.app/project/5000d90d-4a5a-4c61-92d3-e115a3b36697"
+          railway up --ci --service ${{ secrets.RAILWAY_SERVICE_ID }} --detach | cat
+
+      - name: Smoke test deployment
+        run: |
+          echo "Running smoke test..."
+          curl -f https://${{ secrets.RAILWAY_PUBLIC_URL }}/healthz/ || exit 1
+          echo "✅ Health check passed!"
