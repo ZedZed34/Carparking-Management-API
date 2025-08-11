@@ -9,6 +9,12 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
 
+    # Make the token and IDs available to ALL steps
+    env:
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
+      RAILWAY_SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -16,41 +22,29 @@ jobs:
       - name: Install Railway CLI
         run: npm i -g @railway/cli
 
-      - name: Verify Railway auth
-        run: |
-          railway whoami
-          railway status || true
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-
+      # Drop the 'whoami' step (it fails fast if token is stale). We’ll let 'up' tell us.
       - name: Deploy (Dockerfile) to Railway
         run: |
           railway up --ci --detach \
-            --project ${{ secrets.RAILWAY_PROJECT_ID }} \
-            --service ${{ secrets.RAILWAY_SERVICE_ID }}
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+            --project "$RAILWAY_PROJECT_ID" \
+            --service "$RAILWAY_SERVICE_ID"
 
       - name: Run migrations
         run: |
-          railway run --project ${{ secrets.RAILWAY_PROJECT_ID }} --service ${{ secrets.RAILWAY_SERVICE_ID }} \
+          railway run --project "$RAILWAY_PROJECT_ID" --service "$RAILWAY_SERVICE_ID" \
             python manage.py migrate --noinput
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
       - name: Collect static
         run: |
-          railway run --project ${{ secrets.RAILWAY_PROJECT_ID }} --service ${{ secrets.RAILWAY_SERVICE_ID }} \
+          railway run --project "$RAILWAY_PROJECT_ID" --service "$RAILWAY_SERVICE_ID" \
             python manage.py collectstatic --noinput
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
       - name: Smoke test /healthz (retry)
         run: |
           set -e
           for i in $(seq 1 10); do
             echo "Try #$i: hitting internal healthz..."
-            if railway run --project ${{ secrets.RAILWAY_PROJECT_ID }} --service ${{ secrets.RAILWAY_SERVICE_ID }} \
+            if railway run --project "$RAILWAY_PROJECT_ID" --service "$RAILWAY_SERVICE_ID" \
                  bash -lc 'curl -fsS http://127.0.0.1:${PORT:-8000}/healthz/'; then
               echo "healthz OK"
               exit 0
@@ -58,5 +52,3 @@ jobs:
             sleep 3
           done
           echo "healthz failed"; exit 1
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
