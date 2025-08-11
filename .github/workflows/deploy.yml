@@ -56,18 +56,28 @@ jobs:
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
-      - name: Smoke test /healthz
+      - name: Smoke test /healthz (public URL)
         run: |
           railway run \
             --project ${{ secrets.RAILWAY_PROJECT_ID }} \
             --service ${{ secrets.RAILWAY_SERVICE_ID }} \
             python - <<'PY'
-import os, urllib.request
-port = os.getenv("PORT", "8000")
-url = f"http://127.0.0.1:{port}/healthz/"
-with urllib.request.urlopen(url, timeout=5) as r:
-    assert r.status == 200, "healthz not OK"
-print("healthz OK")
+import os, urllib.request, time
+domain = os.getenv("RAILWAY_PUBLIC_DOMAIN", "").strip()
+if not domain:
+    raise SystemExit("No RAILWAY_PUBLIC_DOMAIN available")
+url = f"https://{domain}/healthz/"
+for i in range(10):
+    try:
+        with urllib.request.urlopen(url, timeout=5) as r:
+            assert r.status == 200, f"healthz not OK: {r.status}"
+            print("healthz OK at", url)
+            break
+    except Exception as e:
+        print("Attempt", i+1, "failed:", e)
+        time.sleep(3)
+else:
+    raise SystemExit("healthz check failed after retries")
 PY
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
