@@ -27,12 +27,12 @@ jobs:
           railway status || true
 
       - name: Deploy to Railway
-        shell: bash
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-          RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
-        run: |
-          railway up --ci --detach --service ${{ secrets.RAILWAY_SERVICE_ID }} | cat
+  shell: bash
+  env:
+    RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+    RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
+  run: |
+    railway up --ci --detach --service ${{ secrets.RAILWAY_SERVICE_ID }} | cat
 
       - name: Check deployment status
         run: |
