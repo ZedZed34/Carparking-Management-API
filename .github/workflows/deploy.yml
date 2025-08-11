@@ -62,7 +62,7 @@ jobs:
           railway run \
             --project ${{ secrets.RAILWAY_PROJECT_ID }} \
             --service ${{ secrets.RAILWAY_SERVICE_ID }} \
-            python - <<'PYTHON'
+            python - <<'PY'
 import os, urllib.request, time
 domain = os.getenv("RAILWAY_PUBLIC_DOMAIN", "").strip()
 if domain:
@@ -78,7 +78,7 @@ if domain:
             print("Attempt", i+1, "failed:", e)
             time.sleep(3)
 print("Public-domain smoke test skipped or failed; not failing the pipeline.")
-PY
+PY      
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
