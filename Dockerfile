@@ -29,5 +29,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=5 \
   CMD curl -fsS http://127.0.0.1:${PORT}/healthz/ || exit 1
 
-# Start Gunicorn — use shell form so $PORT expands at runtime
-CMD ["sh", "-c", "gunicorn AdvancedWebDevelopment.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 60 --access-logfile - --error-logfile -"]
+# Start script with proper error handling
+CMD ["sh", "-c", "python manage.py migrate && python manage.py collectstatic --noinput && (python scripts/load_and_store.py || echo 'Data loading failed, continuing...') && gunicorn AdvancedWebDevelopment.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 60 --access-logfile - --error-logfile -"]

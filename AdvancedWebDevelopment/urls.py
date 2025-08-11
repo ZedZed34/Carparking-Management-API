@@ -19,10 +19,20 @@ from django.http import JsonResponse
 
 # Health check endpoint for Railway/Docker
 def health_check(request):
+    try:
+        # Try to query the database to ensure it's working
+        from django.db import connection
+        cursor = connection.cursor()
+        cursor.execute("SELECT 1")
+        db_status = "connected"
+    except:
+        db_status = "disconnected"
+    
     return JsonResponse({
         "status": "healthy",
         "service": "Carpark Management API",
-        "version": "1.0.0"
+        "version": "1.0.0",
+        "database": db_status
     })
 
 urlpatterns = [
