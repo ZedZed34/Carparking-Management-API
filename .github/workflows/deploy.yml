@@ -19,17 +19,13 @@ jobs:
           echo "$HOME/.railway/bin" >> $GITHUB_PATH
 
       - name: Deploy to Railway
-        run: |
-          railway link ${{ secrets.RAILWAY_PROJECT_ID }}
-          railway up --detach --service ${{ secrets.RAILWAY_SERVICE_ID }}
+        run: railway up --detach
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
+          RAILWAY_SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
 
-      - name: Wait for deployment
-        run: sleep 30
-
-      - name: Health check
+      - name: Check deployment status
         run: |
-          echo "Deployment completed. Check your Railway dashboard for status."
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          echo "✅ Deployment initiated successfully!"
+          echo "Check your Railway dashboard: https://railway.app/project/5000d90d-4a5a-4c61-92d3-e115a3b36697"
