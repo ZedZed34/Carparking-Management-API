@@ -25,8 +25,9 @@ ENV PORT=8000
 EXPOSE 8000
 
 # Container healthcheck (matches our /healthz/ route)
-HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+# Give app more time to boot on cold start
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=5 \
   CMD curl -fsS http://127.0.0.1:${PORT}/healthz/ || exit 1
 
 # Start Gunicorn — use shell form so $PORT expands at runtime
-CMD ["sh", "-c", "gunicorn AdvancedWebDevelopment.wsgi:application --bind 0.0.0.0:$PORT --workers 3 --timeout 30"]
+CMD ["sh", "-c", "gunicorn AdvancedWebDevelopment.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 60 --access-logfile - --error-logfile -"]
