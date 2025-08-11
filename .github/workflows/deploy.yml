@@ -62,7 +62,7 @@ jobs:
           railway run \
             --project ${{ secrets.RAILWAY_PROJECT_ID }} \
             --service ${{ secrets.RAILWAY_SERVICE_ID }} \
-            python - <<'PY'
+            python - <<'PYTHON'
 import os, urllib.request, time
 domain = os.getenv("RAILWAY_PUBLIC_DOMAIN", "").strip()
 if domain:
