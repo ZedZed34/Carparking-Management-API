@@ -39,18 +39,29 @@ jobs:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
       - name: Run migrations
-        run: railway run python manage.py migrate --noinput
+        run: |
+          railway run \
+            --project ${{ secrets.RAILWAY_PROJECT_ID }} \
+            --service ${{ secrets.RAILWAY_SERVICE_ID }} \
+            python manage.py migrate --noinput
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
       - name: Collect static
-        run: railway run python manage.py collectstatic --noinput
+        run: |
+          railway run \
+            --project ${{ secrets.RAILWAY_PROJECT_ID }} \
+            --service ${{ secrets.RAILWAY_SERVICE_ID }} \
+            python manage.py collectstatic --noinput
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
       - name: Smoke test /healthz
         run: |
-          railway run python - <<'PY'
+          railway run \
+            --project ${{ secrets.RAILWAY_PROJECT_ID }} \
+            --service ${{ secrets.RAILWAY_SERVICE_ID }} \
+            python - <<'PY'
 import os, urllib.request
 port = os.getenv("PORT", "8000")
 url = f"http://127.0.0.1:{port}/healthz/"
@@ -65,7 +76,10 @@ PY
       - name: Create superuser (optional)
         if: ${{ secrets.DJANGO_SUPERUSER_USERNAME != '' && secrets.DJANGO_SUPERUSER_PASSWORD != '' }}
         run: |
-          railway run python manage.py shell -c "
+          railway run \
+            --project ${{ secrets.RAILWAY_PROJECT_ID }} \
+            --service ${{ secrets.RAILWAY_SERVICE_ID }} \
+            python manage.py shell -c "
 from django.contrib.auth import get_user_model
 U = get_user_model()
 u='${{ secrets.DJANGO_SUPERUSER_USERNAME }}'

@@ -28,5 +28,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
   CMD curl -fsS http://127.0.0.1:${PORT}/healthz/ || exit 1
 
-# Start Gunicorn — change module if your project name differs
-CMD ["gunicorn", "AdvancedWebDevelopment.wsgi:application", "--bind", "0.0.0.0:${PORT}", "--workers", "3", "--timeout", "30"]
+# Start Gunicorn — use shell form so $PORT expands at runtime
+CMD ["sh", "-c", "gunicorn AdvancedWebDevelopment.wsgi:application --bind 0.0.0.0:$PORT --workers 3 --timeout 30"]
