@@ -7,8 +7,16 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # ── Core ────────────────────────────────────────────────────────────────────────
 # Accept both DJANGO_* and legacy names for compatibility with existing env files
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY") or os.getenv("SECRET_KEY", "change-me-in-prod")
-DEBUG = (os.getenv("DJANGO_DEBUG") or os.getenv("DEBUG", "False")).lower() == "true"
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "*").split(",")
+
+def _to_bool(v: str, default: bool = False) -> bool:
+    if v is None:
+        return default
+    return str(v).strip().lower() in {"1", "true", "yes", "y", "on"}
+
+DEBUG = _to_bool(os.getenv("DJANGO_DEBUG") or os.getenv("DEBUG"), default=False)
+
+# Comma-separated, trims whitespace
+ALLOWED_HOSTS = [h.strip() for h in os.getenv("ALLOWED_HOSTS", "*").split(",") if h.strip()]
 
 # ── Apps ────────────────────────────────────────────────────────────────────────
 INSTALLED_APPS = [
@@ -21,12 +29,15 @@ INSTALLED_APPS = [
     # your apps:
     "carparks",
     "rest_framework",
+    # optional but installed in requirements
+    "corsheaders",
 ]
 
-# ── Middleware (include WhiteNoise after SecurityMiddleware) ────────────────────
+# ── Middleware (WhiteNoise after Security, CORS near the top) ───────────────────
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
-    "whitenoise.middleware.WhiteNoiseMiddleware",  # ← required for static on Railway
+    "whitenoise.middleware.WhiteNoiseMiddleware",  # static files in prod
+    "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -56,15 +67,17 @@ TEMPLATES = [
 WSGI_APPLICATION = "AdvancedWebDevelopment.wsgi.application"
 
 # ── Database: use DATABASE_URL when present; fallback SQLite for local ──────────
+# Set DB_SSL_REQUIRED=false when using Railway's internal hostname; true for public endpoint.
+_db_ssl_required = _to_bool(os.getenv("DB_SSL_REQUIRED"), default=True)
 DATABASES = {
     "default": dj_database_url.config(
         default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
         conn_max_age=600,
-        ssl_require=os.getenv("DB_SSL_REQUIRED", "true").lower() == "true",
+        ssl_require=_db_ssl_required,
     )
 }
 
-# ── Password validation (keep your existing) ────────────────────────────────────
+# ── Password validation ─────────────────────────────────────────────────────────
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
@@ -85,9 +98,40 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 # ── Security for reverse proxy (Railway) ───────────────────────────────────────
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-# Comma-separated list e.g. "https://example.com,https://*.railway.app"
-_csrf_origins = os.getenv("CSRF_TRUSTED_ORIGINS", "")
-CSRF_TRUSTED_ORIGINS = [o.strip() for o in _csrf_origins.split(",") if o.strip()]
+
+# CSRF trusted origins — accept singular or plural env var names
+_raw_csrf = (
+    os.getenv("CSRF_TRUSTED_ORIGINS")  # plural (Railway UI default)
+    or os.getenv("CSRF_TRUSTED_ORIGIN")  # singular (older configs)
+    or "https://*"  # permissive fallback (you can tighten this)
+)
+CSRF_TRUSTED_ORIGINS = [o.strip() for o in _raw_csrf.split(",") if o.strip()]
+
+# Optional: CORS (if you need browser clients hitting your API)
+_raw_cors = os.getenv("CORS_ALLOWED_ORIGINS", "")
+if _raw_cors:
+    CORS_ALLOWED_ORIGINS = [o.strip() for o in _raw_cors.split(",") if o.strip()]
+CORS_ALLOW_CREDENTIALS = True
+
+# ── REST framework (light defaults; adjust to your needs) ───────────────────────
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.SessionAuthentication",
+        "rest_framework.authentication.BasicAuthentication",
+    ],
+    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.AllowAny"],
+}
+
+# ── Production hardening when DEBUG=False ───────────────────────────────────────
+if not DEBUG:
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "0"))  # set e.g. 31536000 once you're ready
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = _to_bool(os.getenv("SECURE_HSTS_INCLUDE_SUBDOMAINS"), default=False)
+    SECURE_HSTS_PRELOAD = _to_bool(os.getenv("SECURE_HSTS_PRELOAD"), default=False)
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_BROWSER_XSS_FILTER = True
+    X_FRAME_OPTIONS = "DENY"
 
 # ── Default PK / Auto Field ────────────────────────────────────────────────────
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

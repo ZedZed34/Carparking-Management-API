@@ -45,21 +45,18 @@ jobs:
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
-      - name: Smoke test /healthz (inside container)
+      - name: Smoke test /healthz (retry)
         run: |
-          railway run --project ${{ secrets.RAILWAY_PROJECT_ID }} --service ${{ secrets.RAILWAY_SERVICE_ID }} \
-            python - <<'PY'
-import os, urllib.request, time
-url = f"http://127.0.0.1:{os.getenv('PORT','8000')}/healthz/"
-for _ in range(10):
-    try:
-        with urllib.request.urlopen(url, timeout=3) as r:
-            assert r.status == 200
-            print("healthz OK"); break
-    except Exception as e:
-        print("waiting for app:", e); time.sleep(2)
-else:
-    raise SystemExit("healthz failed")
-PY
+          set -e
+          for i in $(seq 1 10); do
+            echo "Try #$i: hitting internal healthz..."
+            if railway run --project ${{ secrets.RAILWAY_PROJECT_ID }} --service ${{ secrets.RAILWAY_SERVICE_ID }} \
+                 bash -lc 'curl -fsS http://127.0.0.1:${PORT:-8000}/healthz/'; then
+              echo "healthz OK"
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "healthz failed"; exit 1
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
