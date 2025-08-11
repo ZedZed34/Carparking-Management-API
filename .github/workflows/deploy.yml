@@ -18,12 +18,15 @@ jobs:
           curl -fsSL https://railway.app/install.sh | sh
           echo "$HOME/.railway/bin" >> $GITHUB_PATH
 
+      - name: Authenticate & Link Railway
+        run: |
+          railway login --token ${{ secrets.RAILWAY_TOKEN }}
+          railway link --project ${{ secrets.RAILWAY_PROJECT_ID }}
+          railway status || true
+
       - name: Deploy to Railway
-        run: railway up --detach
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-          RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
-          RAILWAY_SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
+        run: |
+          railway up --detach --service ${{ secrets.RAILWAY_SERVICE_ID }}
 
       - name: Check deployment status
         run: |
