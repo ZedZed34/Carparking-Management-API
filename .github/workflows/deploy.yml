@@ -33,7 +33,9 @@ jobs:
       # Build & deploy using your repo's Dockerfile
       - name: Deploy to Railway
         run: |
-          railway up --detach
+          railway up --detach \
+            --project ${{ secrets.RAILWAY_PROJECT_ID }} \
+            --service ${{ secrets.RAILWAY_SERVICE_ID }}
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
