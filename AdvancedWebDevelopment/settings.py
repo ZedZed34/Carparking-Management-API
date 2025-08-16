@@ -134,9 +134,12 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 _raw_csrf = (
     os.getenv("CSRF_TRUSTED_ORIGINS")
     or os.getenv("CSRF_TRUSTED_ORIGIN")
-    or "https://*"
+    or ""
 )
 CSRF_TRUSTED_ORIGINS = [o.strip() for o in _raw_csrf.split(",") if o.strip()]
+if not CSRF_TRUSTED_ORIGINS and not DEBUG:
+    # Default for Railway when not explicitly set
+    CSRF_TRUSTED_ORIGINS = ["https://*.up.railway.app"]
 
 # CORS (optional)
 _raw_cors = os.getenv("CORS_ALLOWED_ORIGINS", "")

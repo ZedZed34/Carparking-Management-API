@@ -16,6 +16,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from django.http import JsonResponse
+from django.views.generic import RedirectView
 
 # Health check endpoint for Railway/Docker
 def health_check(request):
@@ -42,6 +43,9 @@ urlpatterns = [
     # Health check endpoint
     path('health/', health_check, name='health'),
     path('healthz/', health_check, name='healthz'),  # Alternative for Railway
+    
+    # Root redirect
+    path('', RedirectView.as_view(url='/home/', permanent=False)),
     
     # Include carparks app URLs (includes both API and HTML views)
     path('', include('carparks.urls')),
