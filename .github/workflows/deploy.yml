@@ -23,9 +23,7 @@ jobs:
           curl -fsSL https://railway.app/install.sh | sh
           echo "$HOME/.railway/bin" >> $GITHUB_PATH
 
-      # No 'use', no '--project'. The project is taken from env.
       - name: Deploy (Dockerfile) to Railway
         shell: bash
         run: |
           railway up --ci --detach --service "$RAILWAY_SERVICE_ID" | cat
-      # Optional smoke test can be added later; Dockerfile runs migrations/collectstatic

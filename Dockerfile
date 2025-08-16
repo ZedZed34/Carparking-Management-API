@@ -1,5 +1,5 @@
 # Python 3.13 slim image
-FROM python:3.13
+FROM python:3.13-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
