@@ -5,17 +5,17 @@ A modern Django REST API for managing carpark information with comprehensive fea
 [![CI/CD Pipeline](https://github.com/ZedZed34/Carparking-Management-API/actions/workflows/deploy.yml/badge.svg)](https://github.com/ZedZed34/Carparking-Management-API/actions/workflows/deploy.yml)
 [![Test Suite](https://github.com/ZedZed34/Carparking-Management-API/actions/workflows/test.yml/badge.svg)](https://github.com/ZedZed34/Carparking-Management-API/actions/workflows/test.yml)
 
-## 🌟 **Features**
+##  **Features**
 
 ### Core Functionality
-- **📋 View All Carparks**: List all carparks with pagination support
-- **🔍 Filter by Car Park Type**: Filter carparks by specific types
-- **🆓 Filter Free Parking**: Find carparks offering free parking
-- **📊 Group by Parking System**: Display grouped statistics by parking system
-- **📏 Average Gantry Height**: Calculate and display average gantry heights
-- **➕ Add New Car Park**: Create new carpark entries via REST API
-- **🔎 Search by Address**: Advanced address-based search functionality
-- **📐 Height Range Filter**: Filter carparks by gantry height range
+- ** View All Carparks**: List all carparks with pagination support
+- ** Filter by Car Park Type**: Filter carparks by specific types
+- ** Filter Free Parking**: Find carparks offering free parking
+- ** Group by Parking System**: Display grouped statistics by parking system
+- ** Average Gantry Height**: Calculate and display average gantry heights
+- ** Add New Car Park**: Create new carpark entries via REST API
+- ** Search by Address**: Advanced address-based search functionality
+- ** Height Range Filter**: Filter carparks by gantry height range
 
 ### Technical Features
 - ✅ **RESTful API** with comprehensive endpoints
@@ -31,7 +31,7 @@ A modern Django REST API for managing carpark information with comprehensive fea
 
 ---
 
-## 🚀 **Quick Start**
+##  **Quick Start**
 
 ### Option 1: Docker (Recommended)
 
@@ -377,13 +377,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-## 📞 **Support & Contact**
-
-- **GitHub Issues**: [Report bugs or request features](https://github.com/ZedZed34/Carparking-Management-API/issues)
-- **Documentation**: [View full API docs](https://your-railway-app.railway.app/api/v1/)
-- **Email**: your-email@example.com
-
----
 
 ## 🙏 **Acknowledgments**
 
