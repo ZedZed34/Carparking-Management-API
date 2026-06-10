@@ -61,7 +61,7 @@ class CarParkAPITestCase(TestCase):
         """
         Test retrieving car parks with free parking.
         """
-        response = self.client.get("/api/v1/carparks/free/")
+        response = self.client.get("/api/v1/carparks/free-parking/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
 
@@ -87,7 +87,7 @@ class CarParkAPITestCase(TestCase):
         """
         Test retrieving the average gantry height of car parks.
         """
-        response = self.client.get("/api/v1/carparks/average/")
+        response = self.client.get("/api/v1/carparks/average-gantry-height/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertAlmostEqual(response.data["average_height"], 1.95)
 

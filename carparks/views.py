@@ -2,14 +2,18 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from django.db.models import Avg, Count
-from django.shortcuts import render
 from .models import CarPark
 from .serializers import CarParkSerializer
-from django.http import HttpResponse
 from uuid import uuid4
 from django.shortcuts import get_object_or_404
 from django.db import IntegrityError
-from django.db.models import Q
+
+_BOOL_TO_TEXT = {True: "TRUE", False: "FALSE"}
+
+
+def _to_text(val):
+    """Convert Python booleans to 'TRUE'/'FALSE', pass everything else through."""
+    return _BOOL_TO_TEXT.get(val, val)
 
 # Feature 1: View All Car Parks
 class CarParkListView(APIView):
@@ -51,47 +55,21 @@ class AverageGantryHeightView(APIView):
 # Feature 6: Add New Car Park
 class CarParkCreateView(APIView):
     def post(self, request):
-        # Accept minimal payload and fill sensible defaults for required fields
         payload = request.data.copy()
         payload.setdefault("car_park_no", f"MANUAL-{uuid4().hex[:8].upper()}")
         payload.setdefault("x_coord", 0)
         payload.setdefault("y_coord", 0)
         payload.setdefault("type_of_parking_system", "ELECTRONIC PARKING")
-        # Normalize booleans for CharFields
-        def to_text(val):
-            if isinstance(val, bool):
-                return "TRUE" if val else "FALSE"
-            return val
 
-        payload["short_term_parking"] = to_text(payload.get("short_term_parking", "NO"))
-        payload["free_parking"] = to_text(payload.get("free_parking", "NO"))
+        # Normalize booleans for CharFields
+        payload["short_term_parking"] = _to_text(payload.get("short_term_parking", "NO"))
+        payload["free_parking"] = _to_text(payload.get("free_parking", "NO"))
         payload.setdefault("night_parking", False)
         payload.setdefault("car_park_decks", 0)
         payload.setdefault("gantry_height", 0)
         payload.setdefault("car_park_basement", False)
 
-        # Check duplicates first using raw payload (with safe type casting)
-        try:
-            dup_gantry = float(payload.get("gantry_height")) if payload.get("gantry_height") is not None else None
-        except (TypeError, ValueError):
-            dup_gantry = None
-        if (
-            payload.get("car_park_no")
-            and payload.get("address")
-            and payload.get("car_park_type")
-            and payload.get("type_of_parking_system")
-            and dup_gantry is not None
-        ):
-            if CarPark.objects.filter(
-                car_park_no=payload.get("car_park_no"),
-                address=payload.get("address"),
-                car_park_type=payload.get("car_park_type"),
-                type_of_parking_system=payload.get("type_of_parking_system"),
-                gantry_height=dup_gantry,
-            ).exists():
-                return Response({"detail": "Duplicate car park"}, status=status.HTTP_409_CONFLICT)
-
-        # Validate then save
+        # Validate then save; DB unique_together constraint catches duplicates
         serializer = CarParkSerializer(data=payload)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -99,16 +77,16 @@ class CarParkCreateView(APIView):
             instance = serializer.save()
         except IntegrityError:
             return Response({"detail": "Duplicate car park"}, status=status.HTTP_409_CONFLICT)
-        return Response(CarParkSerializer(instance).data, status=status.HTTP_201_CREATED)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 # New: filter by gantry height range
 class HeightRangeCarParksView(APIView):
     def get(self, request):
         min_h = request.query_params.get("min_height")
         max_h = request.query_params.get("max_height")
+        if min_h is None or max_h is None:
+            return Response({"error": "min_height and max_height are required"}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            if min_h is None or max_h is None:
-                return Response({"error": "min_height and max_height are required"}, status=status.HTTP_400_BAD_REQUEST)
             min_v = float(min_h)
             max_v = float(max_h)
         except ValueError:
@@ -126,27 +104,6 @@ class SearchCarParksByAddressView(APIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response({"error": "Address query not specified"}, status=status.HTTP_400_BAD_REQUEST)
 
-# HTML Views
-def home_view(request):
-    return render(request, "carparks/home.html")
-
-def carpark_create_view(request):
-    return render(request, "carparks/create.html")
-
-def carpark_search_view(request):
-    return render(request, "carparks/search.html")
-
-def average_gantry_height_view(request):
-    return render(request, "carparks/average_gantry_height.html")
-
-def group_by_parking_system_view(request):
-    return render(request, "carparks/group_by_parking_system.html")
-
-def FilteredCarParksHTMLView(request):
-    return render(request, "carparks/filter_by_type.html")
-
-def FilteredFreeParkingHTMLView(request):
-    return render(request, "carparks/filter_free_parking.html")
 
 # New: distinct car park types API for populating dropdowns
 class CarParkTypesView(APIView):
@@ -155,10 +112,6 @@ class CarParkTypesView(APIView):
             CarPark.objects.values_list("car_park_type", flat=True).distinct().order_by("car_park_type")
         )
         return Response(types, status=status.HTTP_200_OK)
-
-# New: All car parks HTML list page
-def carparks_list_view(request):
-    return render(request, "carparks/list.html")
 
 # New: retrieve/update/delete a single car park
 class CarParkDetailView(APIView):

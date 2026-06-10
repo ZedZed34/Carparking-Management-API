@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python *)",
+      "Bash(pip3 show *)",
+      "Bash(python3 -m py_compile carparks/views.py)",
+      "Bash(python3 -m py_compile carparks/serializers.py)",
+      "Bash(python3 -m py_compile carparks/urls.py)",
+      "Bash(python3 -m py_compile carparks/tests.py)",
+      "Bash(pip install *)",
+      "Bash(git stash *)"
+    ]
+  }
+}
